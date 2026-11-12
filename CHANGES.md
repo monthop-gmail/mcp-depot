@@ -17,6 +17,7 @@
   declares scope_keys. Guard refuses `"*"` scopes for personal/financial data. `startTestServer` helper.
   zabbix: out-of-scope group names and hosts on shared triggers are no longer returned; https only unless
   `ZABBIX_ALLOW_HTTP=true`. JWKS stale-if-error for 60 minutes past TTL. `pretest` builds before tests.
+- Dockerfile: optional `servers/<name>/apt-packages.txt` (validated package names) installed in that server's image only.
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.

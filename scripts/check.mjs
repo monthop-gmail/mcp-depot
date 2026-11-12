@@ -92,6 +92,13 @@ for (const name of names) {
     }
   }
 
+  const apt = join(dir, "apt-packages.txt");
+  if (existsSync(apt)) {
+    for (const line of readFileSync(apt, "utf8").split("\n")) {
+      if (line !== "" && !/^[a-z0-9][a-z0-9.+-]*$/.test(line)) fail(`servers/${name}/apt-packages.txt: invalid line '${line}'`);
+    }
+  }
+
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
   const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies, ...pkg.peerDependencies };
   if ("@modelcontextprotocol/sdk" in deps) fail(`servers/${name}/package.json: depends on the MCP SDK directly`);
