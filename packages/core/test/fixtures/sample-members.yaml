@@ -1,0 +1,5 @@
+# Synthetic test membership. Real membership files never enter git.
+members:
+  "user:alice@example.com":
+    roles: [reader]
+    scopes: { rooms: ["a"] }

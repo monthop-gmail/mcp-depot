@@ -163,7 +163,7 @@ describe("refuse to start", () => {
     const loaded = loadServer(echoDefinition());
     const good = {
       ALLOWED_HOSTS: TEST_HOST,
-      MEMBERS_PATH: fileURLToPath(new URL("../../test/fixtures/members.yaml", import.meta.url)),
+      MEMBERS_PATH: fileURLToPath(new URL("../../test/fixtures/sample-members.yaml", import.meta.url)),
       ACCESS_TEAM_DOMAIN: TEST_TEAM,
       ACCESS_AUD: TEST_AUD,
     };
