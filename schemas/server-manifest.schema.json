@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/monthop-gmail/mcp-depot/schemas/server-manifest.schema.json",
+  "title": "mcp-depot server manifest",
+  "description": "One per server at servers/<name>/manifest.yaml. See docs/decisions/0003-server-manifest.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "summary", "owner", "status", "runtime", "data_class", "tools"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 32,
+      "description": "Unique server name; suffix of the portal Server ID (<site>-<name>)."
+    },
+    "summary": { "type": "string", "minLength": 10, "maxLength": 200 },
+    "owner": {
+      "type": "string",
+      "pattern": "^@[A-Za-z0-9-]+(/[A-Za-z0-9._-]+)?$",
+      "description": "GitHub user or team responsible for this server."
+    },
+    "status": { "enum": ["experimental", "stable", "deprecated"] },
+    "deprecated_since": { "type": "string", "format": "date" },
+    "replaced_by": { "type": "string", "description": "Name of the server that replaces this one, if any." },
+    "runtime": {
+      "enum": ["site", "cloud", "any"],
+      "description": "site = needs the site network or data; cloud = runs off-site; any = either."
+    },
+    "data_class": {
+      "enum": ["public", "internal", "personal", "financial"],
+      "description": "Highest data class touched by any tool."
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "access", "summary"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 48,
+            "description": "No server prefix; the portal namespaces tools as <server_id>_<tool>."
+          },
+          "summary": { "type": "string", "minLength": 5, "maxLength": 200 },
+          "access": { "enum": ["read", "write"] },
+          "data_class": { "enum": ["public", "internal", "personal", "financial"] },
+          "default_enabled": { "type": "boolean", "default": true }
+        },
+        "if": { "properties": { "access": { "const": "write" } } },
+        "then": {
+          "required": ["default_enabled"],
+          "properties": { "default_enabled": { "const": false } }
+        }
+      }
+    },
+    "secrets": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+      "description": "Environment variable names only. Never values."
+    },
+    "config": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+      "description": "Non-secret environment variable names."
+    },
+    "upstreams": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 80 },
+      "description": "Systems this server talks to, e.g. 'monitoring API (read-only user)'."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "deprecated" } } },
+      "then": { "required": ["deprecated_since"] }
+    }
+  ]
+}

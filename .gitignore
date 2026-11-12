@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# Never commit site data or secrets
+.env
+.env.*
+!.env.example
+members*.yaml
+secrets/
+*.secret
+*.pem
+*.key

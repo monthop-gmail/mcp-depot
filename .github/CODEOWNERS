@@ -1,0 +1,10 @@
+# Default owner for everything until more maintainers join.
+*                    @monthop-gmail
+
+# Contract and supply chain: always the maintainer, never delegated to a server owner.
+/packages/core/      @monthop-gmail
+/templates/          @monthop-gmail
+/schemas/            @monthop-gmail
+/docs/decisions/     @monthop-gmail
+/.github/            @monthop-gmail
+/AGENTS.md           @monthop-gmail

@@ -1,0 +1,21 @@
+# Example only — the first pilot server will look roughly like this.
+name: monitoring
+summary: Read-only view of active problems, device status and metrics from a monitoring system.
+owner: "@monthop-gmail"
+status: experimental
+runtime: site
+data_class: internal
+tools:
+  - name: get_active_problems
+    summary: List active problems at or above a minimum severity.
+    access: read
+  - name: get_device_status
+    summary: Availability of devices, optionally filtered by host group.
+    access: read
+  - name: get_metrics
+    summary: Latest values for selected item keys on one host.
+    access: read
+secrets: [MONITORING_API_TOKEN]
+config: [MONITORING_API_URL]
+upstreams:
+  - monitoring API (dedicated read-only user)
