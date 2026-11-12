@@ -29,6 +29,8 @@ export interface MssqlConfig {
   password: string;
   database: string;
   encrypt: boolean;
+  /** Accept a self-signed server certificate (no verification). */
+  trustServerCertificate: boolean;
 }
 
 export function openPool(config: MssqlConfig): () => Promise<SqlPool> {
@@ -39,8 +41,7 @@ export function openPool(config: MssqlConfig): () => Promise<SqlPool> {
       user: config.user,
       password: config.password,
       database: config.database,
-      // ZKTime 5 installs run old SQL Server editions with self-signed certificates.
-      options: { encrypt: config.encrypt, trustServerCertificate: true, enableArithAbort: true },
+      options: { encrypt: config.encrypt, trustServerCertificate: config.trustServerCertificate, enableArithAbort: true },
       requestTimeout: 15_000,
       connectionTimeout: 8_000,
       pool: { max: 4 },

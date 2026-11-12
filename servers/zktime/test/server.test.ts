@@ -3,7 +3,7 @@ import { after, before, describe, it } from "node:test";
 import { ConfigError } from "@mcp-depot/core";
 import { AuditLog, StaticMembership, createHttpServer, loadServer } from "@mcp-depot/core/internal";
 import { createTestIdentity, rpc, TEST_HOST } from "@mcp-depot/core/testing";
-import { definition, storeFromEnv } from "../src/definition.js";
+import { definition, mssqlConfigFromEnv, storeFromEnv } from "../src/definition.js";
 import { FixtureStore } from "../src/fixture.js";
 import { MdbStore } from "../src/mdb-store.js";
 import { MssqlStore } from "../src/mssql-store.js";
@@ -212,5 +212,22 @@ describe("zktime configuration", () => {
       storeFromEnv({ ZKTIME_MODE: "mssql", ZKTIME_MSSQL_HOST: "db.example.com", ZKTIME_MSSQL_USER: "ro", ZKTIME_MSSQL_PASSWORD: "x" }) instanceof
         MssqlStore,
     );
+  });
+
+  it("reads SQL Server settings without connecting: encrypted by default, self-signed certificates accepted", () => {
+    const base = { ZKTIME_MSSQL_HOST: "db.example.com", ZKTIME_MSSQL_USER: "ro", ZKTIME_MSSQL_PASSWORD: "x" };
+    const c = mssqlConfigFromEnv(base);
+    assert.deepEqual(c, {
+      host: "db.example.com", port: 1433, user: "ro", password: "x", database: "att2000", encrypt: true, trustServerCertificate: true,
+    });
+    assert.equal(mssqlConfigFromEnv({ ...base, ZKTIME_MSSQL_ENCRYPT: "" }).encrypt, true);
+    assert.equal(mssqlConfigFromEnv({ ...base, ZKTIME_MSSQL_ENCRYPT: "true" }).encrypt, true);
+    assert.equal(mssqlConfigFromEnv({ ...base, ZKTIME_MSSQL_ENCRYPT: "false" }).encrypt, false);
+    assert.equal(mssqlConfigFromEnv({ ...base, ZKTIME_MSSQL_TRUST_SERVER_CERT: "false" }).trustServerCertificate, false);
+    for (const odd of ["yes", "0", "1", "off", "maybe"]) {
+      assert.throws(() => mssqlConfigFromEnv({ ...base, ZKTIME_MSSQL_ENCRYPT: odd }), ConfigError, `encrypt ${odd}`);
+      assert.throws(() => mssqlConfigFromEnv({ ...base, ZKTIME_MSSQL_TRUST_SERVER_CERT: odd }), ConfigError, `trust ${odd}`);
+    }
+    assert.throws(() => mssqlConfigFromEnv({ ZKTIME_MSSQL_HOST: "db.example.com", ZKTIME_MSSQL_USER: "ro" }), ConfigError);
   });
 });
