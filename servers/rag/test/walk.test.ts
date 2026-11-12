@@ -40,7 +40,8 @@ describe("walkFiles uses canonical paths", () => {
     assert.equal(paths.filter((p) => p === "hr/pay.md").length, 1);
     assert.ok(!paths.some((p) => p.startsWith("a-link/") || p === "public/copy.md"), paths.join(", "));
     assert.deepEqual(paths, walkFiles(plain.docs).files.map((f) => f.relPath), "same result with or without links");
-    assert.equal(walkFiles(linked.docs).outside, 0, "links inside the root are not 'outside'");
+    assert.equal(walkFiles(linked.docs).links, 2, "both links (folder and file) are skipped and counted");
+    assert.equal(walkFiles(plain.docs).links, 0);
   });
 });
 
@@ -76,5 +77,13 @@ members:
 
   it("the hr member still finds its own document, exactly once", async () => {
     assert.deepEqual(await hits("hr@example.com"), ["hr/pay.md"]);
+  });
+
+  it("get_status names scope prefixes that match no document, such as a link's name", async () => {
+    const unmatched = async (email: string) =>
+      ((await t.call(email, "get_status")).data as { unmatched_folders: string[] }).unmatched_folders;
+    assert.deepEqual(await unmatched("alink@example.com"), ["a-link"]);
+    assert.deepEqual(await unmatched("hr@example.com"), []);
+    assert.deepEqual(await unmatched("public@example.com"), []);
   });
 });

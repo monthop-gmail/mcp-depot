@@ -1,4 +1,4 @@
-import { readdirSync, realpathSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, realpathSync } from "node:fs";
 import { extname, join, relative, sep } from "node:path";
 
 const SKIP_DIRS = new Set(["node_modules", "$recycle.bin", "system volume information"]);
@@ -20,8 +20,8 @@ export interface WalkedFile {
 export interface WalkResult {
   /** Each real file once, sorted by relPath. */
   files: WalkedFile[];
-  /** Entries skipped because they resolve outside the root (symlinks). */
-  outside: number;
+  /** Symlinks skipped (files or folders, wherever they point): links are never followed. */
+  links: number;
 }
 
 /** True when `real` is `root` or inside it. Both must already be resolved with realpath. */
@@ -34,14 +34,15 @@ const skipped = (relPath: string) =>
   relPath.split("/").some((s) => s.startsWith(".") || SKIP_DIRS.has(s.toLowerCase()));
 
 /**
- * Lists indexable files under `root`. Every entry is resolved with realpath and must stay under the resolved
- * root, so a symlink pointing outside the docs directory is never followed. Paths are canonical (relative to
- * the resolved root), each real directory is visited once and each real file is returned once, so the result
- * does not depend on which links exist or in which order names sort.
+ * Lists indexable files under `root`. Symlinks below the root are never followed — whether they point inside
+ * or outside it — and are only counted; the root itself may be a link (resolved once). Every entry is checked
+ * with lstat, so a document is reached only by its real path: paths are canonical (relative to the resolved
+ * root), each directory is visited once and each file returned once, whatever links exist or however names
+ * sort, and a case-insensitive mount cannot give one file two names through a link.
  */
 export function walkFiles(root: string): WalkResult {
   const realRoot = realpathSync(root);
-  const result: WalkResult = { files: [], outside: 0 };
+  const result: WalkResult = { files: [], links: 0 };
   const visited = new Set<string>([realRoot]);
   const seenFiles = new Set<string>();
   const visit = (dir: string) => {
@@ -53,24 +54,21 @@ export function walkFiles(root: string): WalkResult {
     }
     for (const name of entries) {
       if (name.startsWith(".")) continue;
-      let real: string;
-      try {
-        real = realpathSync(join(dir, name));
-      } catch {
-        continue; // dangling link or vanished entry
-      }
-      if (!isUnder(realRoot, real)) {
-        result.outside += 1;
-        continue;
-      }
-      const relPath = relative(realRoot, real).split(sep).join("/");
-      if (relPath === "" || skipped(relPath)) continue;
+      // `dir` is a real directory and `name` is not a link (checked below), so this path is already canonical.
+      const real = join(dir, name);
       let st;
       try {
-        st = statSync(real);
+        st = lstatSync(real);
       } catch {
+        continue; // vanished entry
+      }
+      if (st.isSymbolicLink()) {
+        result.links += 1;
         continue;
       }
+      if (!isUnder(realRoot, real)) continue; // defensive; cannot happen without following a link
+      const relPath = relative(realRoot, real).split(sep).join("/");
+      if (relPath === "" || skipped(relPath)) continue;
       if (st.isDirectory()) {
         if (visited.has(real)) continue;
         visited.add(real);
