@@ -1,0 +1,14 @@
+# ADR 0003. Every tool the code registers must be listed here, and nothing else.
+name: __NAME__
+summary: TODO — one sentence on what this server lets an AI do.
+owner: "@your-github-handle"
+status: experimental
+runtime: site            # site | cloud | any
+data_class: internal     # public | internal | personal | financial
+tools:
+  - name: get_status
+    summary: Example read-only tool; replace it.
+    access: read
+secrets: []              # names only, e.g. [__NAME_UPPER___API_TOKEN]
+config: []
+upstreams: []

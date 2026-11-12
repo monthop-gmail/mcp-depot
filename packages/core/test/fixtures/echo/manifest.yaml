@@ -1,0 +1,14 @@
+name: echo
+summary: Test-only server with one read tool and one write tool.
+owner: "@monthop-gmail"
+status: experimental
+runtime: any
+data_class: internal
+tools:
+  - name: say
+    summary: Echo the message back with the caller's scopes.
+    access: read
+  - name: remember
+    summary: Pretend to store a note. Off by default.
+    access: write
+    default_enabled: false

@@ -1,0 +1,6 @@
+scope_keys: [rooms]
+roles:
+  reader:
+    tools: [say]
+  writer:
+    tools: [say, remember]

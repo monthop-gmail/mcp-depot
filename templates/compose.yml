@@ -1,0 +1,24 @@
+# Compose fragment for one server (ADR 0001: no host ports; reachable only through the tunnel).
+services:
+  __NAME__:
+    image: ghcr.io/monthop-gmail/mcp-depot-__NAME__:${MCP_DEPOT_TAG:?set MCP_DEPOT_TAG}
+    profiles: [__NAME__]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - ./secrets/__NAME__.env          # this server's secrets only; never committed
+    environment:
+      DEPLOYMENT: ${SITE:?set SITE}-__NAME__
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?set ACCESS_TEAM_DOMAIN}
+      ACCESS_AUD: ${__NAME_UPPER___ACCESS_AUD:?set __NAME_UPPER___ACCESS_AUD}
+      ALLOWED_HOSTS: ${__NAME_UPPER___HOSTNAME:?set __NAME_UPPER___HOSTNAME}
+      MEMBERS_PATH: /run/depot/members.yaml
+    volumes:
+      - ./members/__NAME__.yaml:/run/depot/members.yaml:ro
+    networks: [depot]
+
+networks:
+  depot:
+    external: true   # shared with cloudflared; create once per host

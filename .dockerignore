@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/dist
+.env
+.env.*
+members*.yaml
+secrets/
+*.secret
+*.pem
+*.key

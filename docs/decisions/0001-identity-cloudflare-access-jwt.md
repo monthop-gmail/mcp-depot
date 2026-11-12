@@ -21,7 +21,11 @@ connects directly or through the portal.
      (string or list) must contain at least one of them (whether the portal presents a different `aud` is
      proven in phase 1) · `exp` / `nbf` with ≤ 60 s skew.
    - Missing or malformed team domain / AUD → the server **refuses to start**; if it is somehow running
-     unconfigured, every request gets 403. Keys unavailable → 503. Never fall through to "allow".
+     unconfigured, every request gets 403. Never fall through to "allow".
+   - Keys unavailable: with no cached keys → 503. When a scheduled refresh fails but keys fetched from the
+     team origin are cached, they stay usable for at most 60 minutes past their TTL (stale-if-error, retries
+     backed off), then 503. Chosen deliberately: these are public keys, and a short outage of the key endpoint
+     should not lock everyone out; a longer one should.
 3. **Principal.** Exactly one of:
    - `user:<email>` — `email` present and no `common_name`; email lower-cased and trimmed.
    - `service:<common_name>` — `common_name` present and no `email` (Access service token). Looked up in the
