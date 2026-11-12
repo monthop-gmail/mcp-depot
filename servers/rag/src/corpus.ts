@@ -10,6 +10,12 @@ import { ftsIndexText, normalizeThaiPdf } from "./thai-normalize.js";
 import type { Chunk, Folders, Hit, RagMode, ReindexResult, Source, Status } from "./types.js";
 import { walkFiles } from "./walk.js";
 
+/**
+ * Version of what the index stores (paths, chunking, normalisation). Bump it when that changes: an index built
+ * with another version is dropped and rebuilt on first use. 2 = canonical paths, symlinks never followed.
+ */
+export const INDEX_VERSION = 2;
+
 const DDL = `
   CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
   CREATE TABLE IF NOT EXISTS chunks (
@@ -102,16 +108,24 @@ export class RagCorpus {
     return db;
   }
 
-  private indexedAt(): string | null {
-    const row = this.open().prepare("SELECT v FROM meta WHERE k = 'indexed_at'").get() as { v: string } | undefined;
+  private meta(key: string): string | null {
+    const row = this.open().prepare("SELECT v FROM meta WHERE k = ?").get(key) as { v: string } | undefined;
     return row?.v ?? null;
   }
 
-  /** Waits for a running build, and builds once if the index has never been built. */
+  private indexedAt(): string | null {
+    return this.meta("indexed_at");
+  }
+
+  /**
+   * Waits for a running build, and builds if the index has never been built or was built by another
+   * INDEX_VERSION (then its tables are dropped and recreated first). Callers wait meanwhile.
+   */
   private async ready(): Promise<Database.Database> {
     if (this.building) await this.building.catch(() => undefined);
-    if (this.indexedAt() === null) {
-      this.building ??= this.build().finally(() => (this.building = undefined));
+    const current = this.meta("index_version") === String(INDEX_VERSION);
+    if (this.indexedAt() === null || !current) {
+      this.building ??= this.build(!current).finally(() => (this.building = undefined));
       await this.building;
     }
     return this.open();
@@ -129,23 +143,26 @@ export class RagCorpus {
     return this.building;
   }
 
-  private async build(): Promise<ReindexResult> {
+  /** `resetSchema` drops and recreates the index tables (inside the transaction, so a failed build keeps the old index). */
+  private async build(resetSchema = false): Promise<ReindexResult> {
     const started = Date.now();
     if (!this.prepared) {
       this.options.prepare?.();
       this.prepared = true;
     }
     const db = this.open();
-    const { files, outside } = walkFiles(this.options.docsDir);
-    const insertChunk = db.prepare("INSERT INTO chunks(path, title, page, text) VALUES (?, ?, ?, ?)");
-    const insertFts = db.prepare("INSERT INTO chunks_fts(rowid, path, title, text) VALUES (?, ?, ?, ?)");
+    const { files, links } = walkFiles(this.options.docsDir);
     let skipped = 0;
     let indexedFiles = 0;
     let chunks = 0;
     // Readers wait for this build (ready()), so the transaction can stay open across awaits.
     db.exec("BEGIN");
     try {
-      db.exec("DELETE FROM chunks; INSERT INTO chunks_fts(chunks_fts) VALUES('delete-all');");
+      if (resetSchema) db.exec(`DROP TABLE IF EXISTS chunks_fts; DROP TABLE IF EXISTS chunks; ${DDL}`);
+      else db.exec("DELETE FROM chunks; INSERT INTO chunks_fts(chunks_fts) VALUES('delete-all');");
+      // Prepared after a possible reset, so they bind to the recreated tables.
+      const insertChunk = db.prepare("INSERT INTO chunks(path, title, page, text) VALUES (?, ?, ?, ?)");
+      const insertFts = db.prepare("INSERT INTO chunks_fts(rowid, path, title, text) VALUES (?, ?, ?, ?)");
       for (const file of files) {
         // Re-resolve right before reading: the file must still be the same real path under the root.
         let still = false;
@@ -175,8 +192,9 @@ export class RagCorpus {
       }
       const at = new Date().toISOString();
       db.prepare("INSERT OR REPLACE INTO meta(k, v) VALUES ('indexed_at', ?)").run(at);
+      db.prepare("INSERT OR REPLACE INTO meta(k, v) VALUES ('index_version', ?)").run(String(INDEX_VERSION));
       db.exec("COMMIT");
-      const result = { indexed_at: at, file_count: indexedFiles, chunk_count: chunks, skipped_count: skipped, outside_root_count: outside, duration_ms: Date.now() - started };
+      const result = { indexed_at: at, file_count: indexedFiles, chunk_count: chunks, skipped_count: skipped, link_count: links, duration_ms: Date.now() - started };
       log("info", "index built", { ...result });
       return result;
     } catch (error) {
@@ -192,7 +210,19 @@ export class RagCorpus {
       files: number;
       chunks: number;
     };
-    return { mode: this.mode, sample: this.mode === "fixture", indexed_at: this.indexedAt(), file_count: row.files, chunk_count: row.chunks };
+    // Scope prefixes with no document at all: usually a typo in members.yaml or a folder that is not indexed.
+    const unmatched = (folders ?? []).filter((f) => {
+      const c = folderCondition([f]);
+      return db.prepare(`SELECT 1 FROM chunks c WHERE ${c.sql} LIMIT 1`).get(...c.params) === undefined;
+    });
+    return {
+      mode: this.mode,
+      sample: this.mode === "fixture",
+      indexed_at: this.indexedAt(),
+      file_count: row.files,
+      chunk_count: row.chunks,
+      unmatched_folders: unmatched,
+    };
   }
 
   async listSources(folders: Folders, prefix: string | undefined, limit: number): Promise<Source[]> {

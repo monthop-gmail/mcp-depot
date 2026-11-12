@@ -17,6 +17,7 @@ members:
   "user:indexer@example.com":  { roles: [indexer], scopes: { folders: ["*"] } }
   "user:it@example.com":       { roles: [reader], scopes: { folders: ["/คู่มือไอที/"] } }
   "user:dots@example.com":     { roles: [reader], scopes: { folders: ["hr/../คู่มือไอที"] } }
+  "user:mixed@example.com":    { roles: [reader], scopes: { folders: ["hr", "no-such-folder", "/hr-old/"] } }
   "user:norole@example.com":   { roles: [other], scopes: { folders: ["*"] } }
   "user:noscope@example.com":  { roles: [reader, indexer] }
 `;
@@ -104,11 +105,21 @@ describe("rag server (fixture mode)", () => {
     assert.deepEqual(c.params.slice(0, 6), ["50%", "50\\%/%", "50%/", "ops_team", "ops\\_team/%", "ops_team/"]);
   });
 
+  it("get_status lists the member's own scope prefixes that match no document", async () => {
+    const status = async (email: string) => (await t.call(email, "get_status")).data as { unmatched_folders: string[]; file_count: number };
+    const mixed = await status("mixed@example.com");
+    assert.deepEqual(mixed.unmatched_folders, ["no-such-folder"]);
+    assert.equal(mixed.file_count, 2, "hr/leave-policy.md and hr-old/memo.md");
+    assert.deepEqual((await status("all@example.com")).unmatched_folders, [], '["*"] has nothing to report');
+    assert.deepEqual((await status("it@example.com")).unmatched_folders, []);
+  });
+
   it("reindex rebuilds the whole corpus and reports totals only", async () => {
     const r = await t.call("indexer@example.com", "reindex");
     const data = r.data as Record<string, unknown>;
     assert.equal(data.file_count, 9);
-    assert.equal(data.outside_root_count, 0);
+    assert.equal(data.link_count, 0);
+    assert.equal("outside_root_count" in data, false);
     assert.doesNotMatch(r.text, /\.md|\.txt/);
   });
 });
@@ -137,9 +148,10 @@ members:
     rmSync(root, { recursive: true, force: true });
   });
 
-  it("does not index symlinks that lead outside the root", async () => {
-    const r = (await t.call("all@example.com", "reindex")).data as { file_count: number; outside_root_count: number };
-    assert.equal(r.outside_root_count, 2);
+  it("never follows symlinks, whether they lead outside the root or inside it", async () => {
+    const r = (await t.call("all@example.com", "reindex")).data as { file_count: number; link_count: number };
+    assert.equal(r.link_count, 3, "link-to-file, link-to-dir and the in-root alias");
+    assert.equal(r.file_count, 1);
     const sources = (await t.call("all@example.com", "list_sources")).data as { sources: Array<{ path: string }> };
     assert.deepEqual(sources.sources.map((s) => s.path), ["manuals/inside.md"]);
     const hits = (await t.call("all@example.com", "search", { query: "OUTSIDE-9009" })).data as { count: number };

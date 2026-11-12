@@ -13,6 +13,8 @@ export interface Status {
   indexed_at: string | null;
   file_count: number;
   chunk_count: number;
+  /** The member's own scope prefixes that match no indexed document (always [] for ["*"]). */
+  unmatched_folders: string[];
 }
 
 export interface Source {
@@ -46,6 +48,7 @@ export interface ReindexResult {
   file_count: number;
   chunk_count: number;
   skipped_count: number;
-  outside_root_count: number;
+  /** Symlinks skipped (never followed, wherever they point). */
+  link_count: number;
   duration_ms: number;
 }

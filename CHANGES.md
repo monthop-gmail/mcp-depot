@@ -37,6 +37,9 @@
   `RAG_DOCS_DIR` (symlinks leading outside are not indexed). `compose/rag.yml` (docs `:ro`, index on a
   writable bind directory). Not included: OCR and GitHub ingest.
   rag: documents are indexed under their real path below the docs root (never a symlink's name) and each real file once, so a link cannot move a document into another folder's scope.
+  rag: symlinks below the docs root are never followed (counted as `link_count`, was `outside_root_count`).
+  rag: an index built with another `INDEX_VERSION` is dropped and rebuilt on first use; `get_status` adds
+  `unmatched_folders` — the member's own scope prefixes that match no indexed document.
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.
