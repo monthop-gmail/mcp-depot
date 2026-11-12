@@ -125,7 +125,7 @@ describe("rag files mode: the document root is a hard boundary", () => {
     writeFileSync(join(outside, "secret.md"), "Outside document OUTSIDE-9009 (synthetic); must never be indexed.\n");
     symlinkSync(join(outside, "secret.md"), join(docs, "manuals", "link-to-file.md"));
     symlinkSync(outside, join(docs, "link-to-dir"));
-    symlinkSync(join(docs, "manuals", "inside.md"), join(docs, "manuals", "alias.md")); // inside the root: allowed
+    symlinkSync(join(docs, "manuals", "inside.md"), join(docs, "manuals", "alias.md")); // inside the root: indexed once, under its real path
     const corpus = new RagCorpus({ mode: "files", docsDir: docs, indexPath: join(root, "index", "index.sqlite") });
     t = await startTestServer(definition(corpus), `
 members:
@@ -141,7 +141,7 @@ members:
     const r = (await t.call("all@example.com", "reindex")).data as { file_count: number; outside_root_count: number };
     assert.equal(r.outside_root_count, 2);
     const sources = (await t.call("all@example.com", "list_sources")).data as { sources: Array<{ path: string }> };
-    assert.deepEqual(sources.sources.map((s) => s.path), ["manuals/alias.md", "manuals/inside.md"]);
+    assert.deepEqual(sources.sources.map((s) => s.path), ["manuals/inside.md"]);
     const hits = (await t.call("all@example.com", "search", { query: "OUTSIDE-9009" })).data as { count: number };
     assert.equal(hits.count, 0);
   });
