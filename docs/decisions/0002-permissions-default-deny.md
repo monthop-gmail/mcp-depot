@@ -20,6 +20,8 @@ Membership is personal data and this repository is public, so L3 never enters an
 3. **Scopes filter at query time.** Scope parameters from L3 (e.g. allowed host groups, allowed document folders)
    are passed to the tool in its context and applied in the upstream query, never by filtering results afterwards.
 4. **Writes are explicit.** A write tool needs a role that names it, and is also off by default in the manifest.
+   The guard reads the manifest at runtime too: a tool marked `default_enabled: false` stays unregistered unless
+   the deployment enables it explicitly, whatever the roles say.
 5. **Approvals bind to people.** Any approve/confirm tool records the principal from context; the approver must
    not be the requester.
 6. **Services are separate.** `service:` principals have their own entries and never inherit a person's roles.
@@ -50,10 +52,15 @@ One JSON line per call: time · server · deployment · principal · client labe
 flagged unverified) · tool · decision (allow/deny + reason code) · outcome · duration.
 Never: tokens, JWTs, `Cf-Access-*` headers, request or response bodies (hashed arguments only when a server opts in).
 
+Audit lines contain email addresses, so they are personal data: they stay at the site (local file or the site's
+log store), never in git, issues or public CI logs. Retention is set per site and recorded with the site's
+settings; default 90 days.
+
 ## Least privilege beyond the guard
 A guard bug must not equal full power of the upstream account. Upstream service accounts are read-only wherever
 the server's tools are read-only (e.g. a monitoring API user with a read-only role, not a super-admin token).
-Each server container receives only its own secrets file.
+Each server container receives only its own secrets file, and disabling a server's profile removes its
+container, so no secret stays loaded in a container that keeps running.
 
 ## Tests required in `core` and every server
 For each tool in `tools/list`: denied for a principal with no membership · denied for a member without the role ·

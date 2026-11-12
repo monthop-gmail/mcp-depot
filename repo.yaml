@@ -1,0 +1,25 @@
+schema_version: "0.2"
+name: monthop-gmail/mcp-depot
+owner:
+  team: itops
+  humans: [monthop-gmail]
+status: poc
+purpose: >-
+  Monorepo of MCP servers sharing one core (Cloudflare Access identity, role/scope guard, audit).
+  Each site chooses which servers to deploy; site config and members live outside this repo.
+default_branch: main
+supersedes:
+  - repo: monthop-gmail/itops-mcp-hub
+    scope: partial
+    detail: "MCP servers move here one service at a time (pilot: monitoring); the hub keeps running until each cut-over"
+    confirmed: false
+knowledge_files:
+  agents_md: AGENTS.md
+  claude_md: null
+  adr_dir: docs/decisions/
+  changelog: CHANGES.md
+  openapi: null
+last_reviewed: "2026-11-12"
+review_interval_days: 90
+ws001: [dis-daa25e56]
+visibility_note: "public: do not name private repos, sites, or customers here"
