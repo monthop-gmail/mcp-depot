@@ -1,0 +1,16 @@
+{
+  "name": "@mcp-depot/server-__NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --test-reporter=spec \"dist/test/**/*.test.js\"",
+    "start": "node dist/src/index.js"
+  },
+  "dependencies": {
+    "@mcp-depot/core": "0.1.0"
+  }
+}

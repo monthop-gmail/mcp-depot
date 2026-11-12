@@ -3,8 +3,8 @@
 A depot of small, independent **MCP servers**. Each site picks the servers it needs and deploys only those;
 an MCP server portal (we use Cloudflare's) puts the chosen servers behind one endpoint for AI clients.
 
-> **Status: design phase.** No runnable code yet. The contracts below are under review; the first pilot
-> server follows once they are accepted.
+> **Status: phase 1 (pre-pilot).** `core` and the first server (`zabbix`) are implemented and tested against
+> fixtures. Nothing is deployed yet. Contracts: ADRs 0001–0003.
 
 ## Ideas in one screen
 - **One server, one job.** Each server wraps one system or capability and runs on its own. No hub, no shared
@@ -16,9 +16,10 @@ an MCP server portal (we use Cloudflare's) puts the chosen servers behind one en
   per-site membership file (never in git) decides who holds which role. Every tool goes through one guard.
   → [ADR 0002](docs/decisions/0002-permissions-default-deny.md)
 - **Every server declares itself.** A manifest lists its tools, read/write, data class, runtime and status;
-  CI rejects anything undeclared. → [ADR 0003](docs/decisions/0003-server-manifest.md)
-- **Pick per site.** Build one image per server; a site enables servers with Compose profiles.
-  Site configuration lives in a separate private repository, never here.
+  CI rejects anything undeclared. → [ADR 0003](docs/decisions/0003-server-manifest.md) ·
+  current servers: [docs/servers.md](docs/servers.md)
+- **Pick per site.** One image per server; a site enables servers with Compose profiles.
+  Site configuration lives in a separate private repository, never here. → [docs/deploy.md](docs/deploy.md)
 
 ## Vocabulary
 | Term | Meaning |
@@ -30,14 +31,24 @@ an MCP server portal (we use Cloudflare's) puts the chosen servers behind one en
 
 Words we avoid for our own parts, to stay clear of portal terms: *gateway*, *hub*, *connector*, *portal*.
 
-## Layout (planned)
+## Layout
 ```
-packages/core/         identity · guard · audit · MCP transport
+packages/core/         identity · guard · audit · MCP transport (Node 22, TypeScript)
 servers/<name>/        manifest.yaml · roles.yaml · src/ · test/
-templates/server/      scaffold for a new server
-schemas/               JSON Schemas (manifest; roles and members to follow)
-compose/               one Compose profile per server; no host ports
-docs/decisions/        ADRs
+templates/             scaffold used by `npm run new-server`
+schemas/               JSON Schemas: manifest, roles, members
+compose/               one Compose fragment per server; profile = server name; no host ports
+docs/                  decisions (ADRs) · servers.md (generated) · deploy.md
+scripts/               check · catalogue · new-server
+```
+
+## Working on it
+```
+npm ci
+npm run build
+npm test            # core + every server, fixtures only
+npm run check       # depot rules: manifests, tools = manifest, no ports, guard-only, catalogue fresh
+npm run new-server -- <name>
 ```
 
 ## Contributing

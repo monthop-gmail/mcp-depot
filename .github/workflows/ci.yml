@@ -1,0 +1,45 @@
+name: ci
+
+# pull_request (never pull_request_target): fork PRs run with a read-only token and no secrets.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm test
+      - run: npm run check
+
+  image:
+    # Builds one image per server to prove the Dockerfile works. Publishing is a separate, later decision.
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build images (no push)
+        run: |
+          for dir in servers/*/; do
+            name="$(basename "$dir")"
+            docker build --build-arg SERVER="$name" -t "mcp-depot-$name:ci" .
+          done

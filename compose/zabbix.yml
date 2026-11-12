@@ -1,0 +1,25 @@
+# Compose fragment for one server (ADR 0001: no host ports; reachable only through the tunnel).
+services:
+  zabbix:
+    image: ghcr.io/monthop-gmail/mcp-depot-zabbix:${MCP_DEPOT_TAG:?set MCP_DEPOT_TAG}
+    profiles: [zabbix]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - ./secrets/zabbix.env          # this server's secrets only; never committed
+    environment:
+      DEPLOYMENT: ${SITE:?set SITE}-zabbix
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?set ACCESS_TEAM_DOMAIN}
+      ACCESS_AUD: ${ZABBIX_ACCESS_AUD:?set ZABBIX_ACCESS_AUD}
+      ALLOWED_HOSTS: ${ZABBIX_HOSTNAME:?set ZABBIX_HOSTNAME}
+      MEMBERS_PATH: /run/depot/members.yaml
+      ZABBIX_API_URL: ${ZABBIX_API_URL:?set ZABBIX_API_URL}   # token is in secrets/zabbix.env
+    volumes:
+      - ./members/zabbix.yaml:/run/depot/members.yaml:ro
+    networks: [depot]
+
+networks:
+  depot:
+    external: true   # shared with cloudflared; create once per host

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/monthop-gmail/mcp-depot/schemas/roles.schema.json",
+  "title": "mcp-depot server roles (L2, in git)",
+  "description": "One per server at servers/<name>/roles.yaml. See docs/decisions/0002-permissions-default-deny.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scope_keys", "roles"],
+  "properties": {
+    "scope_keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+      "description": "Scope keys every member of this server must carry. The server applies them in its upstream queries. [\"*\"] as a scope value means unrestricted."
+    },
+    "roles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tools"],
+        "properties": {
+          "summary": { "type": "string", "maxLength": 200 },
+          "tools": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+            "description": "Explicit tool names. Wildcards are not supported."
+          }
+        }
+      }
+    }
+  }
+}

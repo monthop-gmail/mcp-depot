@@ -1,0 +1,20 @@
+name: zabbix
+summary: Read-only view of Zabbix problems, device availability and latest metrics, limited to permitted host groups.
+owner: "@monthop-gmail"
+status: experimental
+runtime: site
+data_class: internal
+tools:
+  - name: get_active_problems
+    summary: Active problems at or above a minimum severity, with host, acknowledgement and tags.
+    access: read
+  - name: get_device_status
+    summary: Monitored hosts and interface availability, optionally for one host group.
+    access: read
+  - name: get_metrics
+    summary: Latest values of selected item keys on one host.
+    access: read
+secrets: [ZABBIX_API_TOKEN]
+config: [ZABBIX_API_URL, ZABBIX_MODE]
+upstreams:
+  - Zabbix 7 JSON-RPC API (dedicated read-only user, not Super admin)

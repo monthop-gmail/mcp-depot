@@ -29,12 +29,13 @@ Membership is personal data and this repository is public, so L3 never enters an
    measured in the phase 1 gate together with L1 revocation.
 
 ## File formats (examples use placeholders only)
+Schemas: `schemas/roles.schema.json`, `schemas/members.schema.json`.
 ```yaml
 # servers/<name>/roles.yaml  (git)
+scope_keys: [host_groups]          # every member of this server must carry these; ["*"] = unrestricted
 roles:
   viewer:
-    tools: [get_active_problems, get_device_status]
-    scopes: [host_groups]          # scope keys this role must be given in members.yaml
+    tools: [get_active_problems, get_device_status]   # explicit names; no wildcards
 ```
 ```yaml
 # members.yaml  (site, mounted read-only, not in git)

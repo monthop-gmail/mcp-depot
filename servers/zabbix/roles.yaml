@@ -1,0 +1,6 @@
+# L2 role rules (ADR 0002). Who holds a role lives in the site's members file, never here.
+scope_keys: [host_groups]   # host group names the member may see; ["*"] = all groups
+roles:
+  viewer:
+    summary: Read problems, device status and metrics within the member's host groups.
+    tools: [get_active_problems, get_device_status, get_metrics]
