@@ -27,6 +27,10 @@ Membership is personal data and this repository is public, so L3 never enters an
 6. **Services are separate.** `service:` principals have their own entries and never inherit a person's roles.
 7. **Reload without restart.** L3 changes take effect on the next request (file watch or signal); the time is
    measured in the phase 1 gate together with L1 revocation.
+8. **The wildcard is core's.** A scope value `["*"]` means unrestricted; `core` defines it (`isUnrestricted()`),
+   servers never invent their own. For servers or tools whose data class is `personal` or `financial`, the
+   guard refuses `"*"` (`scope_wildcard_forbidden`): access to people's or financial data is granted by
+   explicit values only.
 
 ## File formats (examples use placeholders only)
 Schemas: `schemas/roles.schema.json`, `schemas/members.schema.json`.
@@ -66,6 +70,10 @@ container, so no secret stays loaded in a container that keeps running.
 ## Tests required in `core` and every server
 For each tool in `tools/list`: denied for a principal with no membership · denied for a member without the role ·
 allowed for a member with the role. Removing a member takes effect without restart.
+
+Every server that declares `scope_keys` also has `test/scope.test.ts`: two members with disjoint scopes, every
+tool exercised, and each member's outputs checked for names that belong only to the other's scope. Deny tests
+alone pass even when a handler ignores `ctx.scopes`; this test does not.
 
 ## Trade-offs
 Membership is per site, so one person may be listed in several files. A central membership source can replace

@@ -9,7 +9,8 @@ contract. Read them before writing code. Current servers: `docs/servers.md` (gen
 - Identity, guard, audit and transport belong in `packages/core/` only. A server never verifies tokens,
   checks roles or writes audit lines itself; it exports tool definitions and `fixtureDefinition()`.
 - New server → `npm run new-server -- <name>`; do not start from another server's folder.
-- Test helpers (signed test JWTs, MCP client) → `@mcp-depot/core/testing`.
+- Server `src/` imports only `@mcp-depot/core` (public entry). `@mcp-depot/core/internal` and
+  `@mcp-depot/core/testing` are for tests. Test helpers: `startTestServer`, signed test JWTs.
 - `rg` for an existing helper before adding one.
 
 ## Invariants
@@ -28,6 +29,10 @@ server · deployment · core · portal (see README). Do not name anything of our
 `npm run build && npm test && npm run check` green · `npm run catalogue` committed · `CHANGES.md` entry ·
 README/ADR updated in the same PR · new ADR for any new decision or any relaxed invariant ·
 bump `last_reviewed` when you touch this file.
+
+## `npm run check` is not a security boundary
+It catches mistakes. Code-owner review is what stops a deliberately harmful change — review server PRs as if
+the check did not exist.
 
 ## Humans approve
 AI may open PRs; a maintainer reviews and merges. Changes under `packages/core/`, `templates/`, `schemas/`,

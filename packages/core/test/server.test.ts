@@ -11,7 +11,7 @@ import {
   createHttpServer,
   loadServer,
   type ServerDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { createTestIdentity, raw, rpc, TEST_AUD, TEST_HOST, TEST_TEAM } from "../src/testing.js";
 
 const ECHO = fileURLToPath(new URL("../../test/fixtures/echo/", import.meta.url));

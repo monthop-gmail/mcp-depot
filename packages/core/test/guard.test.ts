@@ -13,7 +13,7 @@ import {
   loadRoles,
   servicePrincipal,
   userPrincipal,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const ECHO = fileURLToPath(new URL("../../test/fixtures/echo/", import.meta.url));
 const manifest = loadManifest(join(ECHO, "manifest.yaml"));
@@ -137,4 +137,40 @@ describe("manifest and roles", () => {
     assert.throws(() => loadRoles(p, manifest), /unknown tool 'ghost'/);
   });
   it("cleans up", () => rmSync(dir, { recursive: true, force: true }));
+});
+
+describe("scope wildcard", () => {
+  const WILD = `
+members:
+  "user:all@example.com": { roles: [reader], scopes: { rooms: ["*"] } }
+  "user:mixed@example.com": { roles: [reader], scopes: { rooms: ["a", "*"] } }
+`;
+  it("is allowed for non-sensitive servers and normalised to ['*']", () => {
+    const g = new Guard(manifest, roles, new StaticMembership(WILD));
+    assert.deepEqual(g.decide(userPrincipal("all@example.com"), "say"), { allow: true, roles: ["reader"], scopes: { rooms: ["*"] } });
+    assert.deepEqual(g.decide(userPrincipal("mixed@example.com"), "say"), { allow: true, roles: ["reader"], scopes: { rooms: ["*"] } });
+  });
+  it("is forbidden when the server or any tool handles personal or financial data", () => {
+    for (const m of [
+      { ...manifest, data_class: "personal" as const },
+      { ...manifest, data_class: "financial" as const },
+      { ...manifest, tools: manifest.tools.map((t) => ({ ...t, data_class: "personal" as const })) },
+    ]) {
+      const g = new Guard(m, roles, new StaticMembership(WILD));
+      assert.deepEqual(g.decide(userPrincipal("all@example.com"), "say"), { allow: false, reason: "scope_wildcard_forbidden" });
+      assert.deepEqual(g.visibleTools(userPrincipal("mixed@example.com")), []);
+    }
+  });
+});
+
+describe("public entry point", () => {
+  it("exposes only what servers need; transport, identity and membership stay internal", async () => {
+    const pub = await import("../src/index.js");
+    for (const name of ["createHttpServer", "configFromEnv", "loadServer", "StaticMembership", "FileMembership", "Guard", "AccessJwtProvider", "AuditLog"]) {
+      assert.equal(name in pub, false, `${name} must not be public`);
+    }
+    for (const name of ["main", "ToolError", "ConfigError", "log", "isUnrestricted"]) {
+      assert.equal(name in pub, true, `${name} must be public`);
+    }
+  });
 });

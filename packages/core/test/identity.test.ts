@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { AccessJwtProvider, ConfigError } from "../src/index.js";
+import { AccessJwtProvider, ConfigError } from "../src/internal.js";
 import { createTestIdentity, TEST_AUD, TEST_ORIGIN, TEST_TEAM } from "../src/testing.js";
 
 const header = (token: string) => ({ "cf-access-jwt-assertion": token });
@@ -111,5 +111,24 @@ describe("AccessJwtProvider", () => {
     for (const [teamDomain, audiences] of bad) {
       assert.throws(() => new AccessJwtProvider({ teamDomain, audiences }), ConfigError);
     }
+  });
+});
+
+describe("JWKS stale-if-error", () => {
+  it("keeps verifying with cached keys for a bounded grace when refresh fails, then returns 503", async () => {
+    const t = createTestIdentity();
+    assert.equal((await t.provider.verify(header(t.sign()))).ok, true);
+    t.jwks.fail = true;
+    t.nowMs.value += 11 * 60 * 1000; // TTL passed, refresh fails, keys cached
+    assert.equal((await t.provider.verify(header(t.sign()))).ok, true);
+    const fetchesAfterFailure = t.fetches();
+    t.nowMs.value += 10 * 1000; // within back-off: no new fetch attempt
+    assert.equal((await t.provider.verify(header(t.sign()))).ok, true);
+    assert.equal(t.fetches(), fetchesAfterFailure);
+    t.nowMs.value += 61 * 60 * 1000; // past TTL + grace
+    const r = await t.provider.verify(header(t.sign()));
+    assert.equal(!r.ok && r.rejection.status, 503);
+    t.jwks.fail = false;
+    assert.equal((await t.provider.verify(header(t.sign()))).ok, true, "recovers once keys are reachable");
   });
 });

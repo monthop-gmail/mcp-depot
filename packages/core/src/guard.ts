@@ -9,7 +9,18 @@ export type DenyReason =
   | "membership_unavailable"
   | "not_member"
   | "role_missing"
-  | "scope_missing";
+  | "scope_missing"
+  | "scope_wildcard_forbidden";
+
+/** The scope wildcard. Defined here, not by each server. */
+export const SCOPE_WILDCARD = "*";
+
+/** True when a scope grants everything (`["*"]`). Servers must treat anything else as a list to filter by. */
+export function isUnrestricted(values: readonly string[] | undefined): boolean {
+  return values !== undefined && values.includes(SCOPE_WILDCARD);
+}
+
+const SENSITIVE: ReadonlySet<string> = new Set(["personal", "financial"]);
 
 export type Decision =
   | { allow: true; roles: string[]; scopes: Record<string, string[]> }
@@ -21,6 +32,7 @@ export type Decision =
  */
 export class Guard {
   private readonly enabledTools: ReadonlySet<string>;
+  private readonly sensitive: boolean;
 
   constructor(
     private readonly manifest: Manifest,
@@ -39,6 +51,8 @@ export class Guard {
       if (tool.default_enabled !== false || extra.has(tool.name)) enabled.add(tool.name);
     }
     this.enabledTools = enabled;
+    this.sensitive =
+      SENSITIVE.has(manifest.data_class) || manifest.tools.some((t) => t.data_class !== undefined && SENSITIVE.has(t.data_class));
   }
 
   isEnabled(tool: string): boolean {
@@ -61,7 +75,9 @@ export class Guard {
     for (const key of this.roles.scope_keys) {
       const values = member.scopes[key];
       if (!values || values.length === 0) return { allow: false, reason: "scope_missing" };
-      scopes[key] = [...values];
+      // Personal and financial data must be granted by explicit scope values (ADR 0002 rule 8).
+      if (isUnrestricted(values) && this.sensitive) return { allow: false, reason: "scope_wildcard_forbidden" };
+      scopes[key] = isUnrestricted(values) ? [SCOPE_WILDCARD] : [...values];
     }
     return { allow: true, roles: granting, scopes };
   }

@@ -17,7 +17,7 @@ export function fixtureDefinition(): ServerDefinition {
   return definition(new FixtureZabbix());
 }
 
-/** ZABBIX_MODE=fixture serves synthetic data; otherwise ZABBIX_API_URL (https) and ZABBIX_API_TOKEN are required. */
+/** ZABBIX_MODE=fixture serves synthetic data; otherwise ZABBIX_API_URL (https; http only with ZABBIX_ALLOW_HTTP=true) and ZABBIX_API_TOKEN. */
 export function rpcFromEnv(env: NodeJS.ProcessEnv = process.env): ZabbixRpc {
   const mode = env.ZABBIX_MODE ?? "api";
   if (mode === "fixture") return new FixtureZabbix();
@@ -30,7 +30,10 @@ export function rpcFromEnv(env: NodeJS.ProcessEnv = process.env): ZabbixRpc {
   } catch {
     throw new ConfigError("ZABBIX_API_URL is required");
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new ConfigError("ZABBIX_API_URL must be http(s)");
+  const allowHttp = env.ZABBIX_ALLOW_HTTP === "true";
+  if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
+    throw new ConfigError("ZABBIX_API_URL must be https (http only with ZABBIX_ALLOW_HTTP=true, e.g. same-host LAN)");
+  }
   if (!token) throw new ConfigError("ZABBIX_API_TOKEN is required");
   return new ZabbixApi(url, token);
 }

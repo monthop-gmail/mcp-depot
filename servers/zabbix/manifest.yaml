@@ -15,6 +15,6 @@ tools:
     summary: Latest values of selected item keys on one host.
     access: read
 secrets: [ZABBIX_API_TOKEN]
-config: [ZABBIX_API_URL, ZABBIX_MODE]
+config: [ZABBIX_API_URL, ZABBIX_MODE, ZABBIX_ALLOW_HTTP]
 upstreams:
   - Zabbix 7 JSON-RPC API (dedicated read-only user, not Super admin)

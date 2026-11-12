@@ -14,6 +14,7 @@ const subtle = webcrypto.subtle;
 
 const SKEW_SECONDS = 60;
 const JWKS_TTL_MS = 10 * 60 * 1000;
+const JWKS_STALE_GRACE_MS = 60 * 60 * 1000;
 const MIN_REFETCH_INTERVAL_MS = 30 * 1000;
 const JWKS_TIMEOUT_MS = 5000;
 const AUD_PATTERN = /^[0-9a-f]{64}$/i;
@@ -81,6 +82,7 @@ export class AccessJwtProvider implements IdentityProvider {
   private readonly now: () => number;
   private keys = new Map<string, CryptoKey>();
   private fetchedAt = 0;
+  private lastFailureAt = 0;
   private inflight: Promise<void> | null = null;
 
   constructor(options: AccessJwtOptions) {
@@ -120,11 +122,32 @@ export class AccessJwtProvider implements IdentityProvider {
   }
 
   private async keyFor(kid: string): Promise<CryptoKey | undefined> {
-    const age = this.now() - this.fetchedAt;
-    if (this.fetchedAt === 0 || age > JWKS_TTL_MS) await this.refreshKeys();
+    const now = this.now();
+    const age = now - this.fetchedAt;
+    if (this.fetchedAt === 0 || age > JWKS_TTL_MS) {
+      const withinGrace = this.fetchedAt !== 0 && age <= JWKS_TTL_MS + JWKS_STALE_GRACE_MS;
+      const backingOff = now - this.lastFailureAt < MIN_REFETCH_INTERVAL_MS;
+      if (!(withinGrace && backingOff)) {
+        try {
+          await this.refreshKeys();
+        } catch (error) {
+          this.lastFailureAt = this.now();
+          // Stale-if-error (ADR 0001): public keys already fetched from the team origin stay usable for a
+          // bounded grace period when a scheduled refresh fails. No keys, or past the grace → 503.
+          if (!withinGrace) throw error;
+          log("warn", "access keys refresh failed; using cached keys", {
+            err: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
     let key = this.keys.get(kid);
     if (!key && this.now() - this.fetchedAt > MIN_REFETCH_INTERVAL_MS) {
-      await this.refreshKeys();
+      try {
+        await this.refreshKeys();
+      } catch {
+        return undefined;
+      }
       key = this.keys.get(kid);
     }
     return key;

@@ -10,6 +10,13 @@
 - `schemas/roles.schema.json`, `schemas/members.schema.json`; Dockerfile (one image per server);
   `compose/zabbix.yml`; CI (pinned actions, `pull_request` only, image build without push); `docs/deploy.md`.
 - ADR 0002 example updated to the implemented `scope_keys` format.
+- Review round 2 (PR #2): core split into a narrow public entry and `@mcp-depot/core/internal`; servers' src
+  may import only the public entry. `check` parses compose YAML (no ports/network_mode/pid/ipc/privileged/
+  cap_add/devices/host volumes; read_only, cap_drop ALL, no-new-privileges, network depot required), scans
+  every source extension, forbids dynamic import/require, and requires `test/scope.test.ts` when a server
+  declares scope_keys. Guard refuses `"*"` scopes for personal/financial data. `startTestServer` helper.
+  zabbix: out-of-scope group names and hosts on shared triggers are no longer returned; https only unless
+  `ZABBIX_ALLOW_HTTP=true`. JWKS stale-if-error for 60 minutes past TTL. `pretest` builds before tests.
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.

@@ -1,5 +1,7 @@
 # L2 role rules (ADR 0002). Who holds a role lives in the site's members file, never here.
-scope_keys: []           # e.g. [projects] — every member must carry these; apply them in upstream queries
+scope_keys: []           # e.g. [projects] — every member must carry these; apply them in upstream queries.
+                         # Declaring any scope key requires test/scope.test.ts (see servers/zabbix/test/scope.test.ts).
+                         # ["*"] means unrestricted, and is refused by core for personal/financial data.
 roles:
   viewer:
     tools: [get_status]

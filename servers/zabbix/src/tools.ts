@@ -1,4 +1,4 @@
-import { ToolError, type ToolContext, type ToolDefinition } from "@mcp-depot/core";
+import { ToolError, isUnrestricted, type ToolContext, type ToolDefinition } from "@mcp-depot/core";
 import type { ZabbixRpc } from "./rpc.js";
 
 const SEVERITY_NAMES = ["not_classified", "information", "warning", "average", "high", "disaster"] as const;
@@ -26,7 +26,7 @@ const availability = (code: string | undefined) => (code === "1" ? "available" :
  */
 async function permittedGroupIds(rpc: ZabbixRpc, ctx: ToolContext): Promise<string[] | undefined> {
   const names = ctx.scopes.host_groups ?? [];
-  if (names.includes("*")) return undefined;
+  if (isUnrestricted(names)) return undefined;
   if (names.length === 0) return [];
   const found = await rpc.call<Array<{ groupid: string }>>(
     "hostgroup.get",
@@ -68,12 +68,26 @@ export function zabbixTools(rpc: ZabbixRpc): Record<string, ToolDefinition<any>>
       const triggerIds = [...new Set(problems.filter((p) => (p.object ?? "0") === "0").map((p) => p.objectid))];
       const hostsByTrigger = new Map<string, Array<{ host: string; name: string }>>();
       if (triggerIds.length > 0) {
-        const triggers = await rpc.call<Array<{ triggerid: string; hosts?: Array<{ host: string; name: string }> }>>(
-          "trigger.get",
-          { output: ["triggerid"], triggerids: triggerIds, selectHosts: ["host", "name"] },
-          ctx.signal,
-        );
-        for (const t of triggers) hostsByTrigger.set(t.triggerid, (t.hosts ?? []).map((h) => ({ host: h.host, name: h.name })));
+        const triggers = await rpc.call<
+          Array<{ triggerid: string; hosts?: Array<{ hostid: string; host: string; name: string }> }>
+        >("trigger.get", { output: ["triggerid"], triggerids: triggerIds, selectHosts: ["hostid", "host", "name"] }, ctx.signal);
+        // A trigger can span hosts in several groups: keep only hosts inside the member's scope.
+        let permittedHosts: Set<string> | undefined;
+        if (groupids) {
+          const ids = [...new Set(triggers.flatMap((t) => (t.hosts ?? []).map((h) => h.hostid)))];
+          const allowed = await rpc.call<Array<{ hostid: string }>>(
+            "host.get",
+            { output: ["hostid"], hostids: ids, groupids },
+            ctx.signal,
+          );
+          permittedHosts = new Set(allowed.map((h) => h.hostid));
+        }
+        for (const t of triggers) {
+          hostsByTrigger.set(
+            t.triggerid,
+            (t.hosts ?? []).filter((h) => !permittedHosts || permittedHosts.has(h.hostid)).map((h) => ({ host: h.host, name: h.name })),
+          );
+        }
       }
       return {
         count: problems.length,
@@ -118,7 +132,7 @@ export function zabbixTools(rpc: ZabbixRpc): Record<string, ToolDefinition<any>>
         "host.get",
         {
           output: ["hostid", "host", "name", "status"],
-          selectGroups: ["name"],
+          selectGroups: ["groupid", "name"],
           selectInterfaces: ["ip", "dns", "type", "available", "error", "main"],
           monitored_hosts: true,
           sortfield: "name",
@@ -148,7 +162,8 @@ export function zabbixTools(rpc: ZabbixRpc): Record<string, ToolDefinition<any>>
             name: h.name,
             enabled: h.status === "0",
             availability: overall,
-            groups: (h.groups ?? []).map((g) => g.name),
+            // A host can sit in groups outside the member's scope; show only permitted group names.
+            groups: (h.groups ?? []).filter((g) => !groupids || groupids.includes(g.groupid)).map((g) => g.name),
             interfaces,
           };
         }),

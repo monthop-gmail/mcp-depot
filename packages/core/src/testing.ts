@@ -5,7 +5,10 @@
 import { generateKeyPairSync, createSign } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { request, type IncomingHttpHeaders, type Server as HttpServer } from "node:http";
+import { AuditLog } from "./audit.js";
 import { AccessJwtProvider } from "./identity.js";
+import { StaticMembership } from "./members.js";
+import { createHttpServer, loadServer, type ServerDefinition } from "./server.js";
 
 export const TEST_TEAM = "test-team.cloudflareaccess.com";
 export const TEST_ORIGIN = `https://${TEST_TEAM}`;
@@ -19,6 +22,8 @@ export interface TestIdentity {
   /** Number of JWKS fetches so far. */
   fetches(): number;
   nowMs: { value: number };
+  /** Set `fail` to make the JWKS endpoint return 502. */
+  jwks: { fail: boolean };
 }
 
 export function createTestIdentity(): TestIdentity {
@@ -26,11 +31,13 @@ export function createTestIdentity(): TestIdentity {
   const jwk = publicKey.export({ format: "jwk" }) as { n: string; e: string };
   const kid = "test-kid-1";
   let count = 0;
+  const jwks = { fail: false };
   const nowMs = { value: Date.UTC(2026, 10, 12, 5, 0, 0) };
   const fakeFetch = (async (input: string | URL | Request) => {
     count += 1;
     const url = String(input instanceof Request ? input.url : input);
     if (url !== `${TEST_ORIGIN}/cdn-cgi/access/certs`) return new Response("not found", { status: 404 });
+    if (jwks.fail) return new Response("unavailable", { status: 502 });
     return Response.json({ keys: [{ kty: "RSA", kid, n: jwk.n, e: jwk.e, alg: "RS256", use: "sig" }] });
   }) as typeof fetch;
   const provider = new AccessJwtProvider({
@@ -49,7 +56,7 @@ export function createTestIdentity(): TestIdentity {
     signer.update(`${h}.${p}`);
     return `${h}.${p}.${signer.sign(privateKey).toString("base64url")}`;
   };
-  return { provider, sign, fetches: () => count, nowMs };
+  return { provider, sign, fetches: () => count, nowMs, jwks };
 }
 
 export interface RpcResponse {
@@ -116,4 +123,68 @@ export async function rpc(
     json = res.text;
   }
   return { status: res.status, json };
+}
+
+export interface TestServer {
+  server: HttpServer;
+  /** Audit lines written so far, parsed. */
+  audit: Array<Record<string, unknown>>;
+  /** Tool names visible to this user. */
+  list(email: string): Promise<string[]>;
+  /** Calls a tool as this user. `data` is the parsed JSON result, or null when the call returned an error. */
+  call(
+    email: string,
+    tool: string,
+    args?: Record<string, unknown>,
+  ): Promise<{ isError: boolean; text: string; data: unknown }>;
+  close(): Promise<void>;
+}
+
+/**
+ * Starts a server definition behind the real guard and identity checks, with a synthetic membership.
+ * Use it for the permission and scope-isolation tests every server must have (ADR 0002).
+ */
+export async function startTestServer(
+  definition: ServerDefinition,
+  membersYaml: string,
+  options: { enabledTools?: string[]; deployment?: string } = {},
+): Promise<TestServer> {
+  const id = createTestIdentity();
+  const audit: Array<Record<string, unknown>> = [];
+  const server = createHttpServer(loadServer(definition), {
+    port: 0,
+    deployment: options.deployment ?? "test",
+    allowedHosts: new Set([TEST_HOST]),
+    identity: id.provider,
+    membership: new StaticMembership(membersYaml),
+    audit: new AuditLog((line) => audit.push(JSON.parse(line) as Record<string, unknown>)),
+    enabledTools: options.enabledTools ?? [],
+    bodyLimitBytes: 256 * 1024,
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const as = (email: string) => ({ "cf-access-jwt-assertion": id.sign({ email }) });
+  return {
+    server,
+    audit,
+    async list(email) {
+      const r = await rpc(server, "tools/list", {}, as(email));
+      return ((r.json as { result: { tools: Array<{ name: string }> } }).result.tools ?? []).map((t) => t.name).sort();
+    },
+    async call(email, tool, args = {}) {
+      const r = await rpc(server, "tools/call", { name: tool, arguments: args }, as(email));
+      const result = (r.json as { result: { isError?: boolean; content: Array<{ text: string }> } }).result;
+      const text = result.content[0]?.text ?? "";
+      const isError = result.isError === true;
+      let data: unknown = null;
+      if (!isError) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = text;
+        }
+      }
+      return { isError, text, data };
+    },
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
 }

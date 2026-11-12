@@ -1,19 +1,11 @@
-export { AuditLog, fileSink, stdoutSink, type AuditRecord, type AuditSink } from "./audit.js";
+/**
+ * Public API for servers. A server may import only from "@mcp-depot/core".
+ * Transport, identity, membership and guard live in "@mcp-depot/core/internal", which servers' src/ must not
+ * import (enforced by `npm run check`); tests may use it together with "@mcp-depot/core/testing".
+ */
 export { ConfigError, ToolError } from "./errors.js";
-export { Guard, type Decision, type DenyReason } from "./guard.js";
-export { AccessJwtProvider, parseAudiences, parseTeamOrigin, type AccessJwtOptions } from "./identity.js";
 export { log } from "./log.js";
-export { loadManifest, loadRoles, type DataClass, type Manifest, type ManifestTool, type Roles } from "./manifest.js";
-export { FileMembership, StaticMembership, parseMembers, type Member, type MemberLookup, type MembershipSource } from "./members.js";
-export { servicePrincipal, userPrincipal, type IdentityProvider, type IdentityResult, type Principal, type Rejection } from "./principal.js";
-export {
-  configFromEnv,
-  createHttpServer,
-  loadServer,
-  main,
-  type LoadedServer,
-  type RuntimeConfig,
-  type ServerDefinition,
-  type ToolContext,
-  type ToolDefinition,
-} from "./server.js";
+export { isUnrestricted } from "./guard.js";
+export type { DataClass, Manifest, ManifestTool } from "./manifest.js";
+export type { Principal } from "./principal.js";
+export { main, type ServerDefinition, type ToolContext, type ToolDefinition } from "./server.js";

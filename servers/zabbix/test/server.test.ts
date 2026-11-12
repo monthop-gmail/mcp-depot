@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { AuditLog, ConfigError, StaticMembership, createHttpServer, loadServer } from "@mcp-depot/core";
+import { ConfigError } from "@mcp-depot/core";
+import { AuditLog, StaticMembership, createHttpServer, loadServer } from "@mcp-depot/core/internal";
 import { createTestIdentity, rpc, TEST_HOST } from "@mcp-depot/core/testing";
 import { definition, rpcFromEnv } from "../src/definition.js";
 import { FixtureZabbix } from "../src/fixture.js";
@@ -81,7 +82,9 @@ describe("zabbix server (fixture mode)", () => {
 
   it("limits problems to permitted groups; ['*'] sees everything", async () => {
     const alice = await call("alice@example.com", "get_active_problems");
-    assert.deepEqual(alice.data.problems.map((p: { name: string }) => p.name), ["Database agent unavailable"]);
+    assert.deepEqual(alice.data.problems.map((p: { name: string }) => p.name), ["Link flapping", "Database agent unavailable"]);
+    const flapping = alice.data.problems[0];
+    assert.deepEqual(flapping.hosts.map((h: { host: string }) => h.host), ["srv-app-01"], "out-of-scope host on the same trigger is dropped");
     const root = await call("root@example.com", "get_active_problems", { severity_min: 4 });
     assert.equal(root.data.count, 2);
   });
@@ -122,5 +125,8 @@ describe("zabbix configuration", () => {
       rpcFromEnv({ ZABBIX_API_URL: "https://zabbix.example.com/api_jsonrpc.php", ZABBIX_API_TOKEN: "t" }),
     );
     assert.doesNotThrow(() => rpcFromEnv({ ZABBIX_MODE: "fixture" }));
+    const http = { ZABBIX_API_URL: "http://zabbix.example.com/api_jsonrpc.php", ZABBIX_API_TOKEN: "t" };
+    assert.throws(() => rpcFromEnv(http), ConfigError, "cleartext token refused by default");
+    assert.doesNotThrow(() => rpcFromEnv({ ...http, ZABBIX_ALLOW_HTTP: "true" }));
   });
 });

@@ -29,10 +29,17 @@ Each server lives in `servers/<name>/` with a `manifest.yaml` validated against
 **CI (phase 1)**
 1. Manifest validates against the schema, and no tool name starts with `<server name>_`.
 2. Fixture-mode start: `tools/list` equals the manifest's enabled tools — nothing undeclared.
-3. The server imports the guard from `core` and registers tools only through it.
-4. Compose fragments publish no host ports.
+3. Server source imports only the public `@mcp-depot/core` entry (no `/internal`, `/testing`, MCP SDK,
+   network server modules, dynamic `import()` or `require`); transport, identity and membership are not
+   reachable from it. A server with `scope_keys` has `test/scope.test.ts` (ADR 0002).
+4. Compose fragments are parsed, not pattern-matched: one service named after the server, profile = name,
+   `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, network `depot` only; no `ports`, `network_mode`,
+   `pid`, `ipc`, `privileged`, `cap_add`, `devices` or host-exposing volumes.
 5. `docs/servers.md` (the depot catalogue) is generated from manifests; a stale file fails CI.
 6. `deprecated` for more than 90 days → CI warns; a removal PR is expected.
+
+These checks catch mistakes, not malice. The gate against a deliberately harmful change is code-owner
+review of every PR.
 
 ## Why
 The manifest is what lets a maintainer review an outside PR without reading every line, lets each site choose
