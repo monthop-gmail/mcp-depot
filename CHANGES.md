@@ -1,6 +1,15 @@
 # Changes
 
 ## Unreleased — phase 1 (pre-pilot)
+- `servers/zktime` (experimental, `data_class: personal`): six read-only tools over ZKTime 5 attendance
+  (`get_status`, `list_departments`, `list_devices`, `list_employees`, `list_punches`, `inspect_schema`);
+  backends `fixture` · `mdb` (att2000.mdb via mdb-tools, read-only mount) · `mssql` (SELECT-only login),
+  chosen by `ZKTIME_MODE`. Roles `viewer` and `diagnostics`; `departments` scope resolved to ids once per call
+  and applied in the query (bound `IN (@d0, …)` parameters on SQL Server; row filter while parsing on mdb,
+  which has no WHERE). No biometrics, passwords, SSN, `CommPassword`, card numbers or gender; punches need a
+  `from`/`to` range of at most 31 days and are row-limited. `compose/zktime.yml`.
+- Dockerfile: optional `servers/<name>/apt-packages.txt` installs OS packages in the final stage
+  (`--no-install-recommends`, apt lists removed); servers without the file are unchanged.
 - `packages/core`: Cloudflare Access JWT verification (ADR 0001), three-layer default-deny guard with
   runtime manifest enforcement and file membership that reloads per request and fails closed (ADR 0002),
   audit JSON lines, stateless Streamable HTTP MCP endpoint with Host/Origin allowlist, no CORS, body limit,

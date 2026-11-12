@@ -5,3 +5,4 @@ Generated from `servers/*/manifest.yaml` by `npm run catalogue`. Do not edit by 
 | Server | Status | Runtime | Data class | Tools | Owner | Summary |
 |---|---|---|---|---|---|---|
 | [zabbix](../servers/zabbix/) | experimental | site | internal | `get_active_problems`, `get_device_status`, `get_metrics` | @monthop-gmail | Read-only view of Zabbix problems, device availability and latest metrics, limited to permitted host groups. |
+| [zktime](../servers/zktime/) | experimental | site | personal | `get_status`, `list_departments`, `list_devices`, `list_employees`, `list_punches`, `inspect_schema` | @monthop-gmail | Read-only view of ZKTime 5 attendance (departments, employees, clock-in/out punches, devices), limited to permitted departments. |

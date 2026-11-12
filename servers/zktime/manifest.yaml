@@ -1,0 +1,41 @@
+# ADR 0003. Every tool the code registers must be listed here, and nothing else.
+name: zktime
+summary: Read-only view of ZKTime 5 attendance (departments, employees, clock-in/out punches, devices), limited to permitted departments.
+owner: "@monthop-gmail"
+status: experimental
+runtime: site
+data_class: personal
+tools:
+  - name: get_status
+    summary: Backend mode, mapped tables present, and counts within the member's departments.
+    access: read
+  - name: list_departments
+    summary: Departments the member may see.
+    access: read
+  - name: list_devices
+    summary: Attendance terminals (alias, address, serial, model); never the device comm password.
+    access: read
+  - name: list_employees
+    summary: Employees in permitted departments (badge, name, department, title, hire date); no biometrics, card numbers or gender.
+    access: read
+    data_class: personal
+  - name: list_punches
+    summary: Clock-in/out punches in permitted departments for a date range of at most 31 days, row-limited.
+    access: read
+    data_class: personal
+  - name: inspect_schema
+    summary: Table and column names of the attendance database (no row data), for diagnosing a site's schema.
+    access: read
+secrets: [ZKTIME_MSSQL_PASSWORD]
+config:
+  - ZKTIME_MODE
+  - ZKTIME_DATA_DIR
+  - ZKTIME_MDB_FILE
+  - ZKTIME_MSSQL_HOST
+  - ZKTIME_MSSQL_PORT
+  - ZKTIME_MSSQL_USER
+  - ZKTIME_MSSQL_DATABASE
+  - ZKTIME_MSSQL_ENCRYPT
+upstreams:
+  - ZKTime 5 Access database (att2000.mdb) via mdb-tools, read-only mount
+  - ZKTime 5 SQL Server database (dedicated SELECT-only login)

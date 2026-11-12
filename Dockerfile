@@ -12,6 +12,17 @@ ARG SERVER
 RUN test -n "$SERVER" || (echo "build with --build-arg SERVER=<name>" && exit 1)
 ENV NODE_ENV=production SERVER=${SERVER} PORT=8080
 WORKDIR /app
+# Optional OS packages a server needs at runtime: one name per line in servers/<name>/apt-packages.txt
+# (# comments allowed). Servers without the file get exactly the base image.
+RUN --mount=type=bind,source=servers,target=/tmp/servers \
+    list="/tmp/servers/${SERVER}/apt-packages.txt"; \
+    if [ -f "$list" ]; then \
+      pkgs="$(sed -e 's/#.*//' "$list" | tr -s ' \t\r\n' ' ')"; \
+      case "$pkgs" in *[!a-z0-9.+\ -]*) echo "bad package name in $list" >&2; exit 1;; esac; \
+      if [ -n "${pkgs# }" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends $pkgs && rm -rf /var/lib/apt/lists/*; \
+      fi; \
+    fi
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/schemas ./schemas
