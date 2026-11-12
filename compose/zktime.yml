@@ -24,7 +24,8 @@ services:
       ZKTIME_MSSQL_PORT: ${ZKTIME_MSSQL_PORT:-1433}
       ZKTIME_MSSQL_USER: ${ZKTIME_MSSQL_USER:-}
       ZKTIME_MSSQL_DATABASE: ${ZKTIME_MSSQL_DATABASE:-att2000}
-      ZKTIME_MSSQL_ENCRYPT: ${ZKTIME_MSSQL_ENCRYPT:-false}
+      ZKTIME_MSSQL_ENCRYPT: ${ZKTIME_MSSQL_ENCRYPT:-true}
+      ZKTIME_MSSQL_TRUST_SERVER_CERT: ${ZKTIME_MSSQL_TRUST_SERVER_CERT:-true}   # true accepts self-signed certs; false verifies the certificate
     volumes:
       - ./members/zktime.yaml:/run/depot/members.yaml:ro
       # mdb only: folder holding a copy/snapshot of att2000.mdb; read-only, the server never writes to it

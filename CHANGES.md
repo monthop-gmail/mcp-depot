@@ -26,6 +26,7 @@
   applied in the query (bound `IN (@d0, …)` parameters on SQL Server; row filter while parsing on mdb, which
   has no WHERE); `test/scope.test.ts` covers every tool. No biometrics, passwords, SSN, `CommPassword`, card
   numbers or gender; punches need a `from`/`to` range of at most 31 days and are row-limited. `compose/zktime.yml`.
+  zktime SQL Server: `ZKTIME_MSSQL_ENCRYPT` defaults to true (false logs a warning); new `ZKTIME_MSSQL_TRUST_SERVER_CERT` (default true, false verifies the certificate).
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.

@@ -36,6 +36,7 @@ config:
   - ZKTIME_MSSQL_USER
   - ZKTIME_MSSQL_DATABASE
   - ZKTIME_MSSQL_ENCRYPT
+  - ZKTIME_MSSQL_TRUST_SERVER_CERT
 upstreams:
   - ZKTime 5 Access database (att2000.mdb) via mdb-tools, read-only mount
   - ZKTime 5 SQL Server database (dedicated SELECT-only login)
