@@ -18,6 +18,14 @@
   zabbix: out-of-scope group names and hosts on shared triggers are no longer returned; https only unless
   `ZABBIX_ALLOW_HTTP=true`. JWKS stale-if-error for 60 minutes past TTL. `pretest` builds before tests.
 - Dockerfile: optional `servers/<name>/apt-packages.txt` (validated package names) installed in that server's image only.
+- `servers/zktime` (experimental, `data_class: personal`): six read-only tools over ZKTime 5 attendance
+  (`get_status`, `list_departments`, `list_devices`, `list_employees`, `list_punches`, `inspect_schema`);
+  backends `fixture` · `mdb` (att2000.mdb via mdb-tools, read-only mount; `apt-packages.txt`: mdb-tools) ·
+  `mssql` (SELECT-only login), chosen by `ZKTIME_MODE`. Roles `viewer` and `diagnostics`; the `departments`
+  scope lists department names explicitly (no `"*"` for personal data), is resolved to ids once per call and
+  applied in the query (bound `IN (@d0, …)` parameters on SQL Server; row filter while parsing on mdb, which
+  has no WHERE); `test/scope.test.ts` covers every tool. No biometrics, passwords, SSN, `CommPassword`, card
+  numbers or gender; punches need a `from`/`to` range of at most 31 days and are row-limited. `compose/zktime.yml`.
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.

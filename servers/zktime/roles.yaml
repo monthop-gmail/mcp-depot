@@ -1,0 +1,13 @@
+# L2 role rules (ADR 0002). Who holds a role lives in the site's members file, never here.
+# personal data (ADR 0003): every tool is named explicitly; no wildcards.
+scope_keys: [departments]   # exact department names the member may see; personal data, so core refuses ["*"]
+# list_devices is not filtered by department: ZKTime terminals have no department of their own
+# (Machines has no department column and any employee may punch at any terminal), and the list holds
+# no personal data — alias, address, serial and model only.
+roles:
+  viewer:
+    summary: Read departments, devices, employees and punches within the member's departments.
+    tools: [get_status, list_departments, list_devices, list_employees, list_punches]
+  diagnostics:
+    summary: Check the connection and read the database schema (no row data).
+    tools: [get_status, inspect_schema]

@@ -1,0 +1,36 @@
+# Compose fragment for one server (ADR 0001: no host ports; reachable only through the tunnel).
+services:
+  zktime:
+    image: ghcr.io/monthop-gmail/mcp-depot-zktime:${MCP_DEPOT_TAG:?set MCP_DEPOT_TAG}
+    profiles: [zktime]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - ./secrets/zktime.env          # this server's secrets only (ZKTIME_MSSQL_PASSWORD for mssql); never committed
+    environment:
+      DEPLOYMENT: ${SITE:?set SITE}-zktime
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?set ACCESS_TEAM_DOMAIN}
+      ACCESS_AUD: ${ZKTIME_ACCESS_AUD:?set ZKTIME_ACCESS_AUD}
+      ALLOWED_HOSTS: ${ZKTIME_HOSTNAME:?set ZKTIME_HOSTNAME}
+      MEMBERS_PATH: /run/depot/members.yaml
+      ZKTIME_MODE: ${ZKTIME_MODE:?set ZKTIME_MODE to mdb or mssql}
+      # mdb: att2000.mdb (or ZKTIME_MDB_FILE) inside the read-only data mount below
+      ZKTIME_DATA_DIR: /data/zktime
+      ZKTIME_MDB_FILE: ${ZKTIME_MDB_FILE:-}
+      # mssql: a SELECT-only login on the ZKTime database; password is in secrets/zktime.env
+      ZKTIME_MSSQL_HOST: ${ZKTIME_MSSQL_HOST:-}
+      ZKTIME_MSSQL_PORT: ${ZKTIME_MSSQL_PORT:-1433}
+      ZKTIME_MSSQL_USER: ${ZKTIME_MSSQL_USER:-}
+      ZKTIME_MSSQL_DATABASE: ${ZKTIME_MSSQL_DATABASE:-att2000}
+      ZKTIME_MSSQL_ENCRYPT: ${ZKTIME_MSSQL_ENCRYPT:-false}
+    volumes:
+      - ./members/zktime.yaml:/run/depot/members.yaml:ro
+      # mdb only: folder holding a copy/snapshot of att2000.mdb; read-only, the server never writes to it
+      - ${ZKTIME_HOST_DATA_DIR:-./zktime-data}:/data/zktime:ro
+    networks: [depot]
+
+networks:
+  depot:
+    external: true   # shared with cloudflared; create once per host
