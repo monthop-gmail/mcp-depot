@@ -17,9 +17,11 @@ connects directly or through the portal.
    - Algorithm pinned to `RS256`; reject `none`, `HS*` and anything else.
    - Keys from `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`; cache ≤ 10 min; unknown `kid`
      → refetch once → still unknown → reject. Team domain must be `https` and end with `.cloudflareaccess.com`.
-   - `iss` = team origin · `aud` contains the deployment's configured AUD (a list is allowed; whether the
-     portal presents a different `aud` is proven in phase 1) · `exp` / `nbf` with ≤ 60 s skew.
-   - Not configured → 403 (fail closed). Keys unavailable → 503. Never fall through to "allow".
+   - `iss` = team origin · `aud`: the deployment configures an allowlist of exact AUD values; the token's `aud`
+     (string or list) must contain at least one of them (whether the portal presents a different `aud` is
+     proven in phase 1) · `exp` / `nbf` with ≤ 60 s skew.
+   - Missing or malformed team domain / AUD → the server **refuses to start**; if it is somehow running
+     unconfigured, every request gets 403. Keys unavailable → 503. Never fall through to "allow".
 3. **Principal.** Exactly one of:
    - `user:<email>` — `email` present and no `common_name`; email lower-cased and trimmed.
    - `service:<common_name>` — `common_name` present and no `email` (Access service token). Looked up in the
@@ -40,18 +42,30 @@ Verifying at the server makes location irrelevant: a server is equally safe on a
 origin, and direct vs. portal connections yield the same principal. Access already handles login, MFA and
 central revocation, so no server re-implements OAuth.
 
+## Client paths
+Each client path is tested and recorded per vendor: portal · desktop clients that can reach Access directly ·
+each web chat connector. **A client that cannot complete Access directly uses the portal only.** No exception
+path (shared token, IP allowlist, header bypass) is ever opened for it.
+
+## Revocation
+Two levers, both measured: removing a member from the site membership file (ADR 0002, takes effect on the next
+request) and removing the person from the Access group **plus revoking their active Access sessions**. Access
+application session duration is kept short (hours, not days); the chosen value is recorded per deployment.
+
 ## Trade-offs
 - Depends on Cloudflare Access (mitigated by item 7).
-- Revocation is not instant: removing someone from an Access group does not end sessions already issued.
-  Keep Access session duration short and measure it (phase 1 gate).
-- Web chat connectors reaching Access directly is unproven. If a vendor fails, that vendor uses the portal only;
-  no exception path is opened.
+- Revocation through Access alone is not instant: removing someone from an Access group does not end sessions
+  already issued, hence the session revoke step and short session duration above.
+- Web chat connectors reaching Access directly is unproven; see *Client paths*.
 - LAN users must also come through the tunnel; there is no "trusted LAN".
 
 ## Phase 1 gate (must pass on one pilot deployment)
-No JWT → rejected · wrong `aud` → rejected · direct call from LAN/host without JWT → unreachable or rejected ·
-the same person appears with the same `user:` principal in audit via direct client and via portal ·
-service token → `service:` principal · revocation time measured for both layers (ADR 0002).
+- No JWT → rejected · wrong `aud` → rejected · unconfigured server does not start.
+- Direct request from the host or LAN to the container without JWT → unreachable or 401/403 (a test, not prose).
+- The same person gets the same `user:` principal in audit via a direct client and via the portal.
+- Service token → `service:` principal.
+- Per-vendor client path table filled in (see *Client paths*).
+- Revocation time measured for both levers (see *Revocation*).
 
 ## Change
 Another identity provider, or relaxing any rule above, requires a new ADR superseding this one.
