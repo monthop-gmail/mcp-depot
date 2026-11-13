@@ -1,0 +1,29 @@
+# Compose fragment for one server (ADR 0001: no host ports; reachable only through the tunnel).
+services:
+  meshcentral:
+    image: ghcr.io/monthop-gmail/mcp-depot-meshcentral:${MCP_DEPOT_TAG:?set MCP_DEPOT_TAG}
+    profiles: [meshcentral]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - ./secrets/meshcentral.env          # MESHCENTRAL_PASSWORD (login token of a dedicated account); never committed
+    environment:
+      DEPLOYMENT: ${SITE:?set SITE}-meshcentral
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?set ACCESS_TEAM_DOMAIN}
+      ACCESS_AUD: ${MESHCENTRAL_ACCESS_AUD:?set MESHCENTRAL_ACCESS_AUD}
+      ALLOWED_HOSTS: ${MESHCENTRAL_HOSTNAME:?set MESHCENTRAL_HOSTNAME}
+      MEMBERS_PATH: /run/depot/members.yaml
+      MESHCENTRAL_MODE: live
+      MESHCENTRAL_URL: ${MESHCENTRAL_URL:?set MESHCENTRAL_URL}     # https://…; the certificate is always verified
+      MESHCENTRAL_USER: ${MESHCENTRAL_USER:?set MESHCENTRAL_USER}  # dedicated view-only account, not an admin
+      # MESHCENTRAL_CA_FILE: /run/depot/meshcentral-ca.pem         # only for a self-signed MeshCentral certificate
+    volumes:
+      - ./members/meshcentral.yaml:/run/depot/members.yaml:ro
+      # - ./certs/meshcentral-ca.pem:/run/depot/meshcentral-ca.pem:ro
+    networks: [depot]
+
+networks:
+  depot:
+    external: true   # shared with cloudflared; create once per host

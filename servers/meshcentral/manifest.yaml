@@ -1,0 +1,25 @@
+# ADR 0003. Every tool the code registers must be listed here, and nothing else.
+name: meshcentral
+summary: Read-only MeshCentral device groups and cached device inventory, limited to permitted device groups.
+owner: "@monthop-gmail"
+status: experimental
+runtime: site
+data_class: internal
+tools:
+  - name: list_groups
+    summary: Device groups the member may see, with device counts.
+    access: read
+  - name: get_inventory
+    summary: Cached inventory (OS, online, last connection, IP, CPU, RAM) of devices in permitted groups.
+    access: read
+secrets: [MESHCENTRAL_PASSWORD]   # password or login token of a dedicated account; TOTP is not supported
+config:
+  - MESHCENTRAL_URL
+  - MESHCENTRAL_USER
+  - MESHCENTRAL_MODE
+  - MESHCENTRAL_ALLOW_HTTP
+  - MESHCENTRAL_CA_FILE
+  - MESHCENTRAL_TIMEOUT_MS
+upstreams:
+  - MeshCentral control channel, dedicated view-only account in opened groups
+  - No remote control, terminal or file rights for that account

@@ -40,6 +40,13 @@
   rag: symlinks below the docs root are never followed (counted as `link_count`, was `outside_root_count`).
   rag: an index built with another `INDEX_VERSION` is dropped and rebuilt on first use; `get_status` adds
   `unmatched_folders` — the member's own scope prefixes that match no indexed document.
+- `servers/meshcentral` (experimental, `data_class: internal`): read-only `list_groups` and `get_inventory`
+  (cached device inventory); no shell, run-commands, wake, power or file tools. Scope `device_groups` (mesh ids;
+  other values grant nothing) is sent as `meshid` in one `nodes` request per permitted group (a single request
+  only for `["*"]`) and the reply is filtered again; `meshes` has no filter, so groups are filtered after the
+  reply. An out-of-scope or unknown group answers "device group not found". The `ws` client sends only `meshes`,
+  `nodes` and `pong`, requires https (`MESHCENTRAL_ALLOW_HTTP` to opt out) and always verifies the certificate
+  (`MESHCENTRAL_CA_FILE` for self-signed); `MESHCENTRAL_MODE` fixture | live. `compose/meshcentral.yml`.
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.

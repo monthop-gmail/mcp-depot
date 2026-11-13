@@ -1,0 +1,7 @@
+# L2 role rules (ADR 0002). Who holds a role lives in the site's members file, never here.
+scope_keys: [device_groups]   # MeshCentral device group ids ("mesh//…"); ["*"] = every group the service account sees.
+                              # Values that are not of the form mesh//… grant nothing (logged as a warning).
+roles:
+  viewer:
+    summary: List permitted device groups and read their cached device inventory.
+    tools: [list_groups, get_inventory]
