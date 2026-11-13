@@ -1,0 +1,36 @@
+# Compose fragment for one server (ADR 0001: no host ports; reachable only through the tunnel).
+services:
+  rag:
+    image: ghcr.io/monthop-gmail/mcp-depot-rag:${MCP_DEPOT_TAG:?set MCP_DEPOT_TAG}
+    profiles: [rag]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - ./secrets/rag.env          # this server's secrets only (none today); never committed
+    environment:
+      DEPLOYMENT: ${SITE:?set SITE}-rag
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:?set ACCESS_TEAM_DOMAIN}
+      ACCESS_AUD: ${RAG_ACCESS_AUD:?set RAG_ACCESS_AUD}
+      ALLOWED_HOSTS: ${RAG_HOSTNAME:?set RAG_HOSTNAME}
+      MEMBERS_PATH: /run/depot/members.yaml
+      RAG_MODE: files
+      RAG_DOCS_DIR: /data/docs
+      RAG_INDEX_PATH: /var/lib/rag/index.sqlite
+      # reindex is a write tool and off by default; uncomment to offer it to the indexer role.
+      # ENABLED_TOOLS: reindex
+    volumes:
+      - ./members/rag.yaml:/run/depot/members.yaml:ro
+      # The site's document folder; read-only, the server never writes to it.
+      - ${RAG_HOST_DOCS_DIR:?set RAG_HOST_DOCS_DIR}:/data/docs:ro
+      # The index (the only thing this server writes). A directory writable by uid 1000 (node), outside the
+      # document folder. A bind mount, because depot fragments may not declare top-level named volumes.
+      - ${RAG_HOST_INDEX_DIR:?set RAG_HOST_INDEX_DIR}:/var/lib/rag
+    tmpfs:
+      - /tmp                         # SQLite temporary files; the root filesystem is read-only
+    networks: [depot]
+
+networks:
+  depot:
+    external: true   # shared with cloudflared; create once per host

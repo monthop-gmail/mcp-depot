@@ -1,0 +1,29 @@
+# ADR 0003. Every tool the code registers must be listed here, and nothing else.
+name: rag
+summary: Full-text search (Thai and English) over a site's local document folder, limited to permitted folders.
+owner: "@monthop-gmail"
+status: experimental
+runtime: site
+data_class: internal
+tools:
+  - name: get_status
+    summary: Index mode, last build time, and file/chunk counts within the member's folders.
+    access: read
+  - name: list_sources
+    summary: Indexed documents within the member's folders.
+    access: read
+  - name: search
+    summary: Full-text search with excerpts, path, page and chunk id, within the member's folders.
+    access: read
+  - name: get_chunk
+    summary: Full text of one chunk, only if it lies within the member's folders.
+    access: read
+  - name: reindex
+    summary: Rebuild the whole index from the read-only document folder (writes the index only).
+    access: write
+    default_enabled: false
+secrets: []
+config: [RAG_MODE, RAG_DOCS_DIR, RAG_INDEX_PATH]
+upstreams:
+  - Local document folder (read-only mount); PDF text via pdftotext
+  - SQLite FTS5 index on a writable volume (better-sqlite3)

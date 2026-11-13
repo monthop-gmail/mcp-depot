@@ -27,6 +27,15 @@
   has no WHERE); `test/scope.test.ts` covers every tool. No biometrics, passwords, SSN, `CommPassword`, card
   numbers or gender; punches need a `from`/`to` range of at most 31 days and are row-limited. `compose/zktime.yml`.
   zktime SQL Server: `ZKTIME_MSSQL_ENCRYPT` defaults to true (false logs a warning); new `ZKTIME_MSSQL_TRUST_SERVER_CERT` (default true, false verifies the certificate).
+- `servers/rag` (experimental, `data_class: internal`): full-text search over a site's document folder —
+  `get_status`, `list_sources`, `search`, `get_chunk` (read) and `reindex` (write, `default_enabled: false`).
+  SQLite FTS5 trigram index (better-sqlite3) with Thai normalisation (detached vowel/tone marks folded);
+  PDF text via pdftotext (`apt-packages.txt`: poppler-utils). Roles `reader` and `indexer`; the `folders` scope
+  (path prefixes) is bound into every SQL query as `path = ? OR (path LIKE ? ESCAPE '\' AND instr(path, ?) = 1)`
+  — wildcards escaped, case-sensitive, folder boundary kept; out-of-scope chunks answer "not found".
+  Prefixes with `..` or absolute paths are rejected; documents are read only under the realpath of
+  `RAG_DOCS_DIR` (symlinks leading outside are not indexed). `compose/rag.yml` (docs `:ro`, index on a
+  writable bind directory). Not included: OCR and GitHub ingest.
 
 ## Design phase
 - Repository created: README, AGENTS.md, CONTRIBUTING, SECURITY, CODEOWNERS, Apache-2.0 license.

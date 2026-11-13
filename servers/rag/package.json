@@ -1,0 +1,21 @@
+{
+  "name": "@mcp-depot/server-rag",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --test-reporter=spec \"dist/test/**/*.test.js\"",
+    "start": "node dist/src/index.js",
+    "pretest": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mcp-depot/core": "0.1.0",
+    "better-sqlite3": "12.11.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13"
+  }
+}

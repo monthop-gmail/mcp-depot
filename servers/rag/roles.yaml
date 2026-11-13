@@ -1,0 +1,10 @@
+# L2 role rules (ADR 0002). Who holds a role lives in the site's members file, never here.
+scope_keys: [folders]   # folder prefixes relative to the document root (e.g. "manuals/network"); ["*"] = all
+                        # A prefix covers that folder and everything below it, nothing beside it ("hr" ≠ "hr-old").
+roles:
+  reader:
+    summary: Search and read documents within the member's folders.
+    tools: [get_status, list_sources, search, get_chunk]
+  indexer:
+    summary: Rebuild the whole index. Only effective where the deployment enables reindex (ENABLED_TOOLS).
+    tools: [get_status, reindex]
